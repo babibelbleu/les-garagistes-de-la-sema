@@ -1,10 +1,3 @@
-/**
- * Fichier représentant le problème du barbier
- * Sur LittleBookOfSemaphores
-*/
-
-
-// importation des variables
 #include <iostream>
 #include <thread>
 #include <mutex>
@@ -14,99 +7,64 @@
 
 using namespace std;
 
-// constantes
+const int NOMBRE_DE_CHAISES = 5;
+const int NOMBRE_DE_CLIENTS = 1000;
 
-/**
- * @brief NUM_CHAIRS
- *
- * Représente le nombre de chaises dans la salle d'attente.
- */
-const int NUM_CHAIRS = 5;
-
-/**
- * @brief NUM_CUSTOMERS
- *
- * Représente le nombre de clients que l'on va générer.
- */
-const int NUM_CUSTOMERS = 1000;
-
-/**
- * @brief mtx
- *
- * mutex
- */
 mutex mtx;
+condition_variable condition_clients, condition_barbier;
 
-/**
- * @brief customer_cv
- *
- * variable conditionnelle
- */
-condition_variable customer_cv, barber_cv;
+bool barbier_endormi = true;
+int nombre_de_clients_en_attente = 0;
 
-/**
- * @brief barber_sleeping
- *
- * Booléen vérifiant si le barbier est en train de dormir
- */
-bool barber_sleeping = true;
-
-/**
- * @brief num_customers_waiting
- *
- * Nombre de clients qui attendent dans la salle d'attente.
- */
-int num_customers_waiting = 0;
-
-void barber_thread() {
+void thread_barbier() {
     while (true) {
-        unique_lock<mutex> lock(mtx);
+        unique_lock<mutex> verrou(mtx);
 
-        if (num_customers_waiting == 0) {
-            barber_sleeping = true;
-            lock.unlock();
+        if (nombre_de_clients_en_attente == 0) {
+            barbier_endormi = true;
+            verrou.unlock();
 
-            cout << "Barber is sleeping..." << endl;
+            cout << "Le barbier dort..." << endl;
             this_thread::sleep_for(chrono::seconds(1));
         } else {
-            num_customers_waiting--;
-            barber_sleeping = false;
-            customer_cv.notify_one();
+            nombre_de_clients_en_attente--;
+            barbier_endormi = false;
+            condition_clients.notify_one();
 
-            cout << "Barber is cutting hair." << endl;
-            lock.unlock();
+            cout << "Le barbier coupe les cheveux d'un client." << endl;
+            verrou.unlock();
 
             this_thread::sleep_for(chrono::seconds(2));
         }
     }
 }
 
-void customer_thread(int id) {
+void thread_client(int id) {
     this_thread::sleep_for(chrono::milliseconds(1000));
-    unique_lock<mutex> lock(mtx);
+    unique_lock<mutex> verrou(mtx);
 
-    if (num_customers_waiting < NUM_CHAIRS) {
-        num_customers_waiting++;
-        cout << "Customer " << id << " takes a seat. Customers waiting: " << num_customers_waiting << endl;
-        customer_cv.notify_one();
+    if (nombre_de_clients_en_attente < NOMBRE_DE_CHAISES) {
+        nombre_de_clients_en_attente++;
+        cout << "Le client " << id << " prend place. Clients en attente : " << nombre_de_clients_en_attente << endl;
+        condition_clients.notify_one();
     } else {
-        cout << "Customer " << id << " leaves because all chairs are occupied." << endl;
+        cout << "Le client " << id << " part car toutes les chaises sont occupées." << endl;
     }
 }
 
-void customer_generator() {
-    for (int i = 1; i <= NUM_CUSTOMERS; i++) {
-        this_thread::sleep_for(chrono::seconds(1)); // New customer arrives every 1 second
-        thread(customer_thread, i).detach();
+void generateur_de_clients() {
+    for (int i = 1; i <= NOMBRE_DE_CLIENTS; i++) {
+        this_thread::sleep_for(chrono::seconds(1)); // Nouveau client toutes les 1 seconde
+        thread(thread_client, i).detach();
     }
 }
 
 int main() {
-    thread barber(barber_thread);
-    thread generator(customer_generator);
+    thread barbier_thread(thread_barbier);
+    thread generateur_clients_thread(generateur_de_clients);
 
-    barber.join();
-    generator.join();
+    barbier_thread.join();
+    generateur_clients_thread.join();
 
     return 0;
 }
