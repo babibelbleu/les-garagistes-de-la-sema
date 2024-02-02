@@ -23,10 +23,8 @@ Le programme utilise des threads pour représenter les mécaniciens et les clien
     • Chaque mécanicien répare un véhicule à la fois.
     • Le programme génère des clients de manière asynchrone à intervalles réguliers.
 
-Personnalisation :
 
 Vous pouvez personnaliser le nombre de mécaniciens et de clients en ajustant les constantes NB_MECANICIENS et NB_CLIENTS dans le code.
-Dépendances
 Le programme utilise les bibliothèques C++ standard, notamment <iostream>, <thread>, <mutex>, <condition_variable>, et <chrono>.
 
 Auteur:
